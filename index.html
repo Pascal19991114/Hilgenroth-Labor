@@ -242,6 +242,53 @@ textarea.field-textarea:focus { border-color: var(--red); }
   .kontroll-grid { grid-template-columns: 1fr; }
   .nav-tab { padding: 12px 14px; font-size: 12px; }
 }
+
+/* ── TABLET / SMARTPHONE OPTIMIERUNG ── */
+.sieb-table-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  border: 1px solid var(--rule);
+  border-top: none;
+}
+.sieb-table-wrap .sieb-table { border: none; }
+
+@media (max-width: 820px) {
+  /* Verhindert Auto-Zoom beim Fokussieren von Feldern auf iOS/Android */
+  input, select, textarea, button { font-size: 16px !important; }
+  .field-label, .kontroll-label, .siebung-label, .nav-brand,
+  .norm-label, .bk-meta-item, .section-header, .chart-header { font-size: revert; }
+
+  /* Größere Tipp-Flächen */
+  .toolbar { flex-direction: column; align-items: stretch; }
+  .toolbar button, .btn { min-height: 46px; font-size: 15px !important; }
+  .check-item { padding: 6px 0; }
+  .check-item input[type=checkbox] { width: 22px; height: 22px; }
+  .nav-tab { min-height: 48px; }
+
+  /* Tabelle: horizontal scrollbar, erste Spalte bleibt sichtbar */
+  .sieb-table { min-width: 560px; font-size: 12px !important; }
+  .sieb-table input[type=number] { font-size: 15px !important; padding: 6px 0; }
+  .sieb-table td, .sieb-table th { padding: 7px 8px; }
+  .td-sieve {
+    position: sticky; left: 0; z-index: 3;
+    background: var(--bg);
+    box-shadow: 2px 0 4px rgba(0,0,0,0.06);
+  }
+  .sieb-table tbody tr:nth-child(even) .td-sieve { background: var(--bg-alt); }
+  .sieb-table tr.summe-row .td-sieve,
+  .sieb-table tr.summe-row td:first-child { background: var(--ink); }
+  #boden-row .td-sieve { background: #FFFDF5; }
+
+  /* Kontroll- und Metafelder etwas mehr Luft für Finger */
+  .field-input, .norm-input { padding: 8px 4px; }
+  .doc-body { padding: 18px 16px 22px; }
+  .bk-logo-col { padding: 16px 18px; }
+  .bk-title-col { padding: 14px 18px 8px; }
+  .bk-meta { padding: 4px 18px 12px; gap: 14px; }
+
+  /* Übersicht-Tabelle scrollbar statt gequetscht */
+  .uebersicht-table { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+}
 </style>
 </head>
 <body>
@@ -344,6 +391,7 @@ textarea.field-textarea:focus { border-color: var(--red); }
 
       <!-- Tabelle -->
       <div class="section-header">Siebanalyse – Fraktionen &amp; Durchgang</div>
+      <div class="sieb-table-wrap">
       <table class="sieb-table" id="siebTable">
         <thead>
           <tr>
@@ -375,6 +423,7 @@ textarea.field-textarea:focus { border-color: var(--red); }
           </tr>
         </tfoot>
       </table>
+      </div>
 
       <!-- Einwaage-Warnung -->
       <div id="einwaage-warnung" style="display:none; margin-top:14px; padding:10px 14px; background:#FFF0F0; border:1.5px solid var(--red); border-radius:4px; color:var(--red-dark); font-size:12.5px; font-weight:600;">
@@ -1114,6 +1163,47 @@ function toast(msg) {
 }
 
 // ══════════════════════════════════════════
+// ENTER-TASTE → NÄCHSTES FELD (Tablet-Tastatur)
+// ══════════════════════════════════════════
+function setupEnterNavigation() {
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter') return;
+    const el = e.target;
+    const tag = el.tagName;
+
+    // In der Bemerkung soll Enter weiter einen Zeilenumbruch machen
+    if (tag === 'TEXTAREA') return;
+    // Buttons behalten ihr normales Verhalten (Klick auslösen)
+    if (tag === 'BUTTON') return;
+
+    // Nur innerhalb der aktuell sichtbaren Ansicht springen
+    const activeView = document.querySelector('.view.active');
+    if (!activeView) return;
+    if (!activeView.contains(el)) return;
+    if (tag !== 'INPUT' && tag !== 'SELECT') return;
+
+    e.preventDefault();
+
+    // Alle sichtbaren, editierbaren Felder in Dokumentreihenfolge sammeln
+    const felder = Array.from(activeView.querySelectorAll('input, select, textarea'))
+      .filter(f => !f.disabled && !f.readOnly && f.offsetParent !== null);
+
+    const idx = felder.indexOf(el);
+    if (idx === -1) return;
+
+    if (idx < felder.length - 1) {
+      const next = felder[idx + 1];
+      next.focus();
+      if (typeof next.select === 'function' && next.type !== 'checkbox') {
+        try { next.select(); } catch(err) {}
+      }
+    } else {
+      el.blur(); // letztes Feld → Tastatur schließen
+    }
+  });
+}
+
+// ══════════════════════════════════════════
 // INIT
 // ══════════════════════════════════════════
 function syncNummerVonFirebase() {
@@ -1138,6 +1228,7 @@ window.addEventListener('load', () => {
   document.getElementById('bericht-nr').value = getNextNr();
   zeichneSieblinie();
   syncNummerVonFirebase();
+  setupEnterNavigation();
 });
 // Falls Firebase erst nach dem Laden bereit ist
 window.addEventListener('firebase-bereit', syncNummerVonFirebase);
