@@ -471,7 +471,7 @@ textarea.field-textarea:focus { border-color: var(--red); }
         <div class="sign-block">
           <span class="field-label">Laborant / Unterschrift</span>
           <div class="sign-line"></div>
-          <div class="sign-hint">Datum &amp; Unterschrift</div>
+          <div class="sign-hint">Datum: <span id="sign-datum">—</span> · Unterschrift</div>
         </div>
       </div>
     </div>
@@ -1072,6 +1072,7 @@ function ladeBericht(key) {
   if (bd) bd.value = data['mBoden'] !== undefined ? data['mBoden'] : '';
   showView('formular');
   berechne();
+  aktualisiereSignDatum();
   toast('Bericht ' + data['bericht-nr'] + ' geladen');
 }
 
@@ -1159,6 +1160,7 @@ function neuerBericht() {
   document.getElementById('ampel').style.display = 'none';
   document.getElementById('einwaage').style.borderBottomColor = '';
   document.getElementById('einwaage').style.background = '';
+  aktualisiereSignDatum();
   zeichneSieblinie();
 }
 
@@ -1244,6 +1246,29 @@ function setupStammdatenFelder() {
 }
 
 // ══════════════════════════════════════════
+// UNTERSCHRIFT-DATUM — übernimmt automatisch das Berichtsdatum
+// ══════════════════════════════════════════
+function aktualisiereSignDatum() {
+  const feld = document.getElementById('datum');
+  const anzeige = document.getElementById('sign-datum');
+  if (!feld || !anzeige) return;
+  if (feld.value) {
+    const d = new Date(feld.value + 'T00:00:00');
+    anzeige.textContent = isNaN(d) ? '—' : d.toLocaleDateString('de-DE');
+  } else {
+    anzeige.textContent = '—';
+  }
+}
+
+function setupSignDatum() {
+  const feld = document.getElementById('datum');
+  if (!feld) return;
+  feld.addEventListener('change', aktualisiereSignDatum);
+  feld.addEventListener('input', aktualisiereSignDatum);
+  aktualisiereSignDatum();
+}
+
+// ══════════════════════════════════════════
 // ENTER-TASTE → NÄCHSTES FELD (Tablet-Tastatur)
 // ══════════════════════════════════════════
 function setupEnterNavigation() {
@@ -1312,6 +1337,7 @@ window.addEventListener('load', () => {
   setupEnterNavigation();
   setupStammdatenFelder();
   stammdatenSyncFirebase();
+  setupSignDatum();
 });
 // Falls Firebase erst nach dem Laden bereit ist
 window.addEventListener('firebase-bereit', () => {
