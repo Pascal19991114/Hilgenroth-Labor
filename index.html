@@ -229,14 +229,67 @@ textarea.field-textarea:focus { border-color: var(--red); }
 
 /* ── PRINT ── */
 @media print {
+  @page { size: A4; margin: 10mm; }
+
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    color-adjust: exact !important;
+    /* Feste, kompakte Zeilenhöhe — unabhängig davon, ob Google Fonts geladen sind
+       oder auf eine Systemschrift zurückgefallen wird, damit die Seitenaufteilung
+       auf jedem Gerät gleich ausfällt */
+    line-height: 1.2 !important;
+  }
+
+  /* Für den Druck auf eine garantiert kompakte Standardschrift wechseln.
+     Verhindert Verschiebungen durch unterschiedlich geladene Webfonts. */
+  body, input, select, textarea, button, .field-input, .norm-input {
+    font-family: Arial, Helvetica, sans-serif !important;
+  }
+  .sieb-table, .sieb-table input { font-family: 'Courier New', monospace !important; }
+
   body { background: #fff; padding: 0; }
   .app-nav, .toolbar, .view#view-uebersicht { display: none !important; }
   .view#view-formular { display: block !important; padding: 0; }
   .doc { box-shadow: none; max-width: 100%; }
-  .chart-section { page-break-inside: avoid; }
+
+  /* Kompaktere Abstände für den Druck, damit Seite 1 sicher ausreicht */
+  .doc-body { padding: 10px 14px 12px !important; }
+  .bk-logo-col { padding: 10px 16px !important; }
+  .bk-title-col { padding: 10px 16px 6px !important; }
+  .bk-meta { padding: 2px 16px 8px !important; gap: 12px !important; }
+  .bk-title-col h1 { font-size: 15px !important; }
+  .meta-grid { gap: 6px 22px !important; margin-bottom: 8px !important; }
+  .field-input, .norm-input { padding: 3px 2px !important; }
+  .siebung-row { margin-bottom: 8px !important; }
+  .section-header { padding: 4px 10px !important; }
+
+  /* Tabelle: keine mobile Sticky-Spalte, kein horizontales Scrollen — volle Breite */
+  .sieb-table-wrap { overflow: visible !important; border: none !important; }
+  .sieb-table { min-width: 0 !important; width: 100% !important; font-size: 10px !important; }
+  .sieb-table td, .sieb-table th { padding: 2px 6px !important; }
+  .td-sieve { position: static !important; box-shadow: none !important; }
+  .kontroll-grid { padding: 8px 10px !important; margin-top: 8px !important; }
+
+  /* Kopfbereich zusammenhalten */
+  .briefkopf, .meta-grid, .siebung-row { page-break-inside: avoid; }
+  /* Tabelle darf zeilenweise umbrechen (verhindert leere Seite, falls es doch
+     mal knapp wird) — nur einzelne Zeilen bleiben zusammenhängend */
+  .sieb-table tr { page-break-inside: avoid; }
+  .kontroll-grid, #ampel, #einwaage-warnung { page-break-inside: avoid; }
+
+  /* Seite 2: Sieblinie beginnt auf neuer Seite */
+  .chart-section {
+    page-break-before: always;
+    break-before: page;
+    page-break-inside: avoid;
+  }
+
+  /* Bemerkung/Unterschrift bleiben nach der Sieblinie zusammen */
+  .footer-grid { page-break-inside: avoid; }
 }
 
-@media (max-width: 640px) {
+@media screen and (max-width: 640px) {
   .meta-grid { grid-template-columns: 1fr; }
   .meta-grid .field-row.full { grid-column: 1; }
   .footer-grid { grid-template-columns: 1fr; }
@@ -254,7 +307,7 @@ textarea.field-textarea:focus { border-color: var(--red); }
 }
 .sieb-table-wrap .sieb-table { border: none; }
 
-@media (max-width: 820px) {
+@media screen and (max-width: 820px) {
   /* Verhindert Auto-Zoom beim Fokussieren von Feldern auf iOS/Android */
   input, select, textarea, button { font-size: 16px !important; }
   .field-label, .kontroll-label, .siebung-label, .nav-brand,
@@ -1345,6 +1398,9 @@ window.addEventListener('firebase-bereit', () => {
   stammdatenSyncFirebase();
 });
 window.addEventListener('resize', zeichneSieblinie);
+// Sieblinie beim Drucken auf die Papierbreite neu zeichnen, danach zurück auf Bildschirmbreite
+window.addEventListener('beforeprint', () => setTimeout(zeichneSieblinie, 50));
+window.addEventListener('afterprint', () => setTimeout(zeichneSieblinie, 50));
 </script>
 </body>
 </html>
