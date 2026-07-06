@@ -552,6 +552,7 @@ textarea.field-textarea:focus { border-color: var(--red); }
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
   import { getDatabase, ref, set, get, remove, onValue } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+  import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
   // ⚠ Config aus dem Projekt "laborberichte" (Firebase Console → Projekteinstellungen → SDK-Setup).
   //    Region laut Screenshot: europe-west1 (Belgien).
@@ -567,20 +568,28 @@ textarea.field-textarea:focus { border-color: var(--red); }
 
   const app = initializeApp(firebaseConfig);
   const db = getDatabase(app);
-  const BASIS = 'laborberichte'; // Knoten innerhalb der eigenen DB (könnte auch entfallen, so bleibt Platz für spätere Erweiterungen)
+  const auth = getAuth(app);
+  const BASIS = 'laborberichte';
 
-  // Nach außen verfügbar machen für den Haupt-Script-Block
-  window.fbLabor = {
-    speichern: (nr, data) => set(ref(db, BASIS + '/' + nr.replace(/[.#$/\[\]]/g,'_')), data),
-    loeschen:  (nr) => remove(ref(db, BASIS + '/' + nr.replace(/[.#$/\[\]]/g,'_'))),
-    alleLaden: () => get(ref(db, BASIS)).then(s => s.exists() ? s.val() : {}),
-    live:      (cb) => onValue(ref(db, BASIS), s => cb(s.exists() ? s.val() : {})),
-    // Stammdaten (Kunde, Entnahmestelle, Laborant …) — geräteübergreifend gemerkte Vorschlagslisten
-    stammdatenSpeichern: (feld, liste) => set(ref(db, 'stammdaten/' + feld), liste),
-    stammdatenLaden:     (feld) => get(ref(db, 'stammdaten/' + feld)).then(s => s.exists() ? s.val() : []),
-    bereit: true
-  };
-  window.dispatchEvent(new Event('firebase-bereit'));
+  // Anonym einloggen → danach App starten
+  signInAnonymously(auth).then(() => {
+    // Nach außen verfügbar machen für den Haupt-Script-Block
+    window.fbLabor = {
+      speichern: (nr, data) => set(ref(db, BASIS + '/' + nr.replace(/[.#$/\[\]]/g,'_')), data),
+      loeschen:  (nr) => remove(ref(db, BASIS + '/' + nr.replace(/[.#$/\[\]]/g,'_'))),
+      alleLaden: () => get(ref(db, BASIS)).then(s => s.exists() ? s.val() : {}),
+      live:      (cb) => onValue(ref(db, BASIS), s => cb(s.exists() ? s.val() : {})),
+      stammdatenSpeichern: (feld, liste) => set(ref(db, 'stammdaten/' + feld), liste),
+      stammdatenLaden:     (feld) => get(ref(db, 'stammdaten/' + feld)).then(s => s.exists() ? s.val() : []),
+      bereit: true
+    };
+    window.dispatchEvent(new Event('firebase-bereit'));
+  }).catch(err => {
+    console.error('Firebase Auth Fehler:', err);
+    // Fallback: App trotzdem starten (für Offline-Nutzung)
+    window.fbLabor = { bereit: false };
+    window.dispatchEvent(new Event('firebase-bereit'));
+  });
 </script>
 
 <script>
